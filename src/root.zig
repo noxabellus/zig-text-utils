@@ -70,6 +70,48 @@ fn getData() *Data {
 
 pub fn generalCategory(c: Char) GenCatData.Gc { return getData().genCat.gc(c); }
 
+pub fn generalCategoryFromName(name: []const u8) ?GenCatData.Gc {
+    inline for (comptime std.meta.fieldNames(GenCatData.Gc)) |field| {
+        if (std.mem.eql(u8, field, name)) return @field(GenCatData.Gc, field);
+    }
+    return null;
+}
+
+pub fn describeGeneralCategory(cat: GenCatData.Gc) []const u8 {
+    return switch(cat) {
+        .Cc => "Other, Control",
+        .Cf => "Other, Format",
+        .Cn => "Other, Unassigned",
+        .Co => "Other, Private Use",
+        .Cs => "Other, Surrogate",
+        .Ll => "Letter, Lowercase",
+        .Lm => "Letter, Modifier",
+        .Lo => "Letter, Other",
+        .Lu => "Letter, Uppercase",
+        .Lt => "Letter, Titlecase",
+        .Mc => "Mark, Spacing Combining",
+        .Me => "Mark, Enclosing",
+        .Mn => "Mark, Non-Spacing",
+        .Nd => "Number, Decimal Digit",
+        .Nl => "Number, Letter",
+        .No => "Number, Other",
+        .Pc => "Punctuation, Connector",
+        .Pd => "Punctuation, Dash",
+        .Pe => "Punctuation, Close",
+        .Pf => "Punctuation, Final quote (may behave like Ps or Pe depending on usage)",
+        .Pi => "Punctuation, Initial quote (may behave like Ps or Pe depending on usage)",
+        .Po => "Punctuation, Other",
+        .Ps => "Punctuation, Open",
+        .Sc => "Symbol, Currency",
+        .Sk => "Symbol, Modifier",
+        .Sm => "Symbol, Math",
+        .So => "Symbol, Other",
+        .Zl => "Separator, Line",
+        .Zp => "Separator, Paragraph",
+        .Zs => "Separator, Space",
+    };
+}
+
 inline fn strPredicate(str: []const u8, comptime f: fn (c: Char) bool) Error!bool {
     var i: usize = 0;
     while (i < str.len) {
@@ -210,15 +252,16 @@ pub fn nthCodepoint(n: usize, str: []const u8) Error!?Char {
 pub fn nthCodepointOffset(n: usize, str: []const u8) Error!?usize {
     var i: usize = 0;
     var j: usize = 0;
+    if (j == n) return i;
 
     while (i < str.len) {
-        if (j == n) return i;
         const len = try sequenceLengthByte(str[i]);
         i += len;
         j += 1;
+        if (j == n) return i;
     }
 
-    return if (i == str.len) i else null;
+    return null;
 }
 
 pub fn decode(str: []const u8) Error!Char { return std.unicode.utf8Decode(str) catch return Error.BadEncoding; }
@@ -621,8 +664,6 @@ fn InvertibleTokenIterator (comptime predicateMode: bool) type {
 
 
 test {
-    std.debug.print("text test start\n", .{});
-
     const expect = std.testing.expect;
     const expectEqual = std.testing.expectEqual;
     const expectEqualSlices = std.testing.expectEqualSlices;
@@ -631,6 +672,7 @@ test {
     try expect(isControl('\t'));
     try expect(isAlphabetic('a'));
     try expect(isSymbol('´'));
+    try expect(isSymbol('©'));
     try expect(isSpace(' '));
     try expect(isLetter('a'));
     try expect(isControl('\t'));
@@ -820,8 +862,6 @@ test {
             try expectEqual(expect_length_phrase, try wcwidthStr(phrase));
         }
     }
-
-    std.debug.print("text test complete\n", .{});
 }
 
 
